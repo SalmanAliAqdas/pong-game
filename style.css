@@ -19,11 +19,9 @@ body {
   background: radial-gradient(ellipse at 50% 0%, #202c42 0%, #101522 58%);
 }
 
-button, select { font: inherit; }
+button, select, input { font: inherit; }
 
-.game {
-  width: min(940px, 100%);
-}
+.game { width: min(940px, 100%); }
 
 .game-header {
   display: flex;
@@ -57,14 +55,35 @@ h1 {
   text-align: left;
 }
 
-select, .button {
+select, input, .button {
   border: 1px solid #354258;
   border-radius: 9px;
   background: #1a2435;
   color: #f4f7fb;
 }
 
-select { padding: 8px 30px 8px 10px; }
+select, input { min-height: 38px; padding: 8px 10px; }
+
+.player-names {
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: 14px;
+  margin: -4px 0 18px;
+}
+
+.player-names[hidden] { display: none; }
+.player-names label {
+  display: grid;
+  gap: 6px;
+  width: min(220px, 36%);
+  color: #aab8cd;
+  font-size: .78rem;
+  text-align: left;
+}
+.player-names input { width: 100%; }
+.player-names input:focus-visible, select:focus-visible { outline: 2px solid #57e3c2; outline-offset: 3px; }
+.versus { padding-bottom: 10px; color: #57e3c2; font-size: .72rem; font-weight: 800; letter-spacing: .15em; }
 
 .scoreboard {
   position: relative;
@@ -80,32 +99,17 @@ select { padding: 8px 30px 8px 10px; }
   justify-items: center;
   gap: 2px;
   min-width: 62px;
+  max-width: 180px;
   color: #aab8cd;
   font-size: .78rem;
 }
-
-.score-card strong {
-  color: #fff;
-  font-size: 2rem;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
+.score-card span { overflow: hidden; max-width: 180px; text-overflow: ellipsis; white-space: nowrap; }
+.score-card strong { color: #fff; font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; }
 .score-divider { color: #53627a; font-size: 1.5rem; }
-
-.best-score {
-  position: absolute;
-  right: 0;
-  color: #8594aa;
-  font-size: .7rem;
-  font-weight: 800;
-  letter-spacing: .1em;
-}
-
+.best-score { position: absolute; right: 0; color: #8594aa; font-size: .7rem; font-weight: 800; letter-spacing: .1em; }
 .best-score strong { margin-left: 5px; color: #f4c96b; }
 
 .court-wrap { position: relative; }
-
 canvas {
   display: block;
   width: 100%;
@@ -117,7 +121,6 @@ canvas {
   touch-action: none;
   outline: none;
 }
-
 canvas:focus-visible { border-color: #57e3c2; }
 
 .game-message {
@@ -133,34 +136,24 @@ canvas:focus-visible { border-color: #57e3c2; }
   text-align: center;
   transition: opacity .2s ease, visibility .2s ease;
 }
-
 .game-message.is-hidden { opacity: 0; visibility: hidden; }
 .message-kicker { color: #57e3c2; font-size: .68rem; font-weight: 800; letter-spacing: .2em; }
 .game-message strong { font-size: clamp(1.7rem, 5vw, 2.7rem); }
 .game-message span:last-child { color: #c0cada; font-size: .9rem; }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 16px;
-}
-
+.controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 16px; }
 .button {
   min-height: 42px;
   padding: 0 16px;
   cursor: pointer;
   transition: transform .15s ease, border-color .15s ease, background .15s ease;
 }
-
 .button:hover:not(:disabled) { transform: translateY(-1px); border-color: #57e3c2; }
-.button:focus-visible, select:focus-visible { outline: 2px solid #57e3c2; outline-offset: 3px; }
+.button:focus-visible { outline: 2px solid #57e3c2; outline-offset: 3px; }
 .button:disabled { cursor: not-allowed; opacity: .48; }
 .button-primary { border-color: #57e3c2; background: #57e3c2; color: #10201f; font-weight: 800; }
 .button-primary:hover:not(:disabled) { background: #7aefd3; }
 .sound-button[aria-pressed="true"] { border-color: #f4c96b; color: #f4c96b; }
-
 .help { margin: 14px 0 0; color: #91a0b7; font-size: .82rem; text-align: center; }
 kbd { display: inline-block; padding: 1px 5px; border: 1px solid #45536b; border-radius: 4px; color: #e2e8f0; font: inherit; }
 
@@ -168,6 +161,8 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid #45536b; border
   body { padding: 20px 12px; }
   .game-header { align-items: start; }
   .game-options { flex-direction: column; align-items: stretch; gap: 8px; }
+  .player-names { gap: 8px; }
+  .player-names label { width: 42%; }
   .best-score { position: static; margin-left: 6px; }
   .scoreboard { gap: 13px; }
   .button { padding: 0 12px; }

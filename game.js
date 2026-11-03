@@ -16,6 +16,9 @@ const difficultySelect = document.getElementById("difficulty");
 const difficultyControl = document.getElementById("difficulty-control");
 const modeSelect = document.getElementById("mode");
 const helpText = document.getElementById("help-text");
+const playerNamesSection = document.getElementById("player-names");
+const playerOneNameInput = document.getElementById("player-one-name");
+const playerTwoNameInput = document.getElementById("player-two-name");
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
@@ -50,6 +53,38 @@ let audioContext = null;
 
 function isTwoPlayer() {
   return modeSelect.value === "two-player";
+}
+
+function getPlayerName(input, fallback) {
+  const name = input.value.trim().slice(0, 16);
+  return name || fallback;
+}
+
+function getLeftName() {
+  return getPlayerName(playerOneNameInput, "Player 1");
+}
+
+function getRightName() {
+  return getPlayerName(playerTwoNameInput, "Player 2");
+}
+
+function loadPlayerNames() {
+  try {
+    playerOneNameInput.value = localStorage.getItem("pong-player-one") || "";
+    playerTwoNameInput.value = localStorage.getItem("pong-player-two") || "";
+  } catch {
+    // Names remain editable for this visit if browser storage is unavailable.
+  }
+}
+
+function savePlayerName(input, storageKey) {
+  try {
+    const name = input.value.trim().slice(0, 16);
+    if (name) localStorage.setItem(storageKey, name);
+    else localStorage.removeItem(storageKey);
+  } catch {
+    // Saving names is optional; the game still works without browser storage.
+  }
 }
 
 function loadBestScore() {
@@ -94,20 +129,47 @@ function updateScore() {
   computerScoreDisplay.textContent = opponentScore;
 }
 
+function readyHint() {
+  return isTwoPlayer()
+    ? `Two players · First to ${WIN_SCORE} wins · Press Start or Space`
+    : `First to ${WIN_SCORE} wins · Press Start or Space`;
+}
+
+function updateNamesUI() {
+  const twoPlayer = isTwoPlayer();
+  leftPlayerLabel.textContent = twoPlayer ? getLeftName() : "You";
+  rightPlayerLabel.textContent = twoPlayer ? getRightName() : "Computer";
+}
+
 function updateModeUI() {
   const twoPlayer = isTwoPlayer();
   difficultyControl.hidden = twoPlayer;
-  leftPlayerLabel.textContent = twoPlayer ? "Player 1" : "You";
-  rightPlayerLabel.textContent = twoPlayer ? "Player 2" : "Computer";
+  playerNamesSection.hidden = !twoPlayer;
+  updateNamesUI();
   helpText.innerHTML = twoPlayer
-    ? 'Player 1: <kbd>W</kbd>/<kbd>S</kbd> · Player 2: <kbd>↑</kbd>/<kbd>↓</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart'
+    ? `${escapeHTML(getLeftName())}: <kbd>W</kbd>/<kbd>S</kbd> · ${escapeHTML(getRightName())}: <kbd>↑</kbd>/<kbd>↓</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart`
     : 'Move with your mouse or <kbd>W</kbd>/<kbd>S</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart';
   canvas.setAttribute("aria-label", twoPlayer
-    ? "Two-player Pong. Player one uses W and S. Player two uses the up and down arrow keys."
+    ? `Two-player Pong. ${getLeftName()} uses W and S. ${getRightName()} uses the up and down arrow keys.`
     : "Pong against the computer. Move your paddle with the mouse or W and S.");
-  setMessage("Ready?", twoPlayer
-    ? `Two players · First to ${WIN_SCORE} wins · Press Start or Space`
-    : `First to ${WIN_SCORE} wins · Press Start or Space`);
+  if (gameState === "ready") setMessage("Ready?", readyHint());
+}
+
+function escapeHTML(value) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[character]);
+}
+
+function updatePlayerNames() {
+  updateNamesUI();
+  if (isTwoPlayer()) {
+    helpText.innerHTML = `${escapeHTML(getLeftName())}: <kbd>W</kbd>/<kbd>S</kbd> · ${escapeHTML(getRightName())}: <kbd>↑</kbd>/<kbd>↓</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart`;
+    canvas.setAttribute("aria-label", `Two-player Pong. ${getLeftName()} uses W and S. ${getRightName()} uses the up and down arrow keys.`);
+    if (gameState === "over") {
+      setMessage(playerScore >= WIN_SCORE ? `${getLeftName()} wins!` : `${getRightName()} wins!`, "Press R or Restart to play again");
+    }
+  }
 }
 
 function launchBall(direction) {
@@ -149,9 +211,7 @@ function resetGame() {
   updateScore();
   launchBall(1);
   gameState = "ready";
-  setMessage("Ready?", isTwoPlayer()
-    ? `Two players · First to ${WIN_SCORE} wins · Press Start or Space`
-    : `First to ${WIN_SCORE} wins · Press Start or Space`);
+  setMessage("Ready?", readyHint());
   syncControls();
 }
 
@@ -171,8 +231,8 @@ function handlePoint(scoredByPlayer) {
   if (playerScore >= WIN_SCORE || opponentScore >= WIN_SCORE) {
     gameState = "over";
     const winner = playerScore >= WIN_SCORE
-      ? (isTwoPlayer() ? "Player 1 wins!" : "You win!")
-      : (isTwoPlayer() ? "Player 2 wins!" : "Computer wins!");
+      ? (isTwoPlayer() ? `${getLeftName()} wins!` : "You win!")
+      : (isTwoPlayer() ? `${getRightName()} wins!` : "Computer wins!");
     setMessage(winner, "Press R or Restart to play again");
     playTone(playerScore >= WIN_SCORE ? 880 : 150, 0.35);
     syncControls();
@@ -198,9 +258,7 @@ canvas.addEventListener("pointerdown", (event) => {
 
 canvas.addEventListener("keydown", (event) => {
   if (["ArrowUp", "ArrowDown", "Space"].includes(event.code) ||
-      event.key === "ArrowUp" || event.key === "ArrowDown") {
-    event.preventDefault();
-  }
+      event.key === "ArrowUp" || event.key === "ArrowDown") event.preventDefault();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -248,6 +306,16 @@ modeSelect.addEventListener("change", () => {
   resetGame();
   updateModeUI();
 });
+
+playerOneNameInput.addEventListener("input", () => {
+  savePlayerName(playerOneNameInput, "pong-player-one");
+  updatePlayerNames();
+});
+playerTwoNameInput.addEventListener("input", () => {
+  savePlayerName(playerTwoNameInput, "pong-player-two");
+  updatePlayerNames();
+});
+
 startButton.addEventListener("click", beginGame);
 pauseButton.addEventListener("click", pauseGame);
 restartButton.addEventListener("click", resetGame);
@@ -432,6 +500,7 @@ function frame(time) {
   requestAnimationFrame(frame);
 }
 
+loadPlayerNames();
 bestScoreDisplay.textContent = bestScore;
 updateScore();
 updateModeUI();
