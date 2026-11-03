@@ -48,6 +48,7 @@ h1 {
   text-transform: uppercase;
 }
 
+.game-options { display: flex; align-items: end; gap: 12px; }
 .difficulty-control {
   display: grid;
   gap: 6px;
@@ -165,6 +166,8 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid #45536b; border
 
 @media (max-width: 560px) {
   body { padding: 20px 12px; }
+  .game-header { align-items: start; }
+  .game-options { flex-direction: column; align-items: stretch; gap: 8px; }
   .best-score { position: static; margin-left: 6px; }
   .scoreboard { gap: 13px; }
   .button { padding: 0 12px; }

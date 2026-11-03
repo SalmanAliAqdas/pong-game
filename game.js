@@ -3,6 +3,8 @@ const ctx = canvas.getContext("2d");
 const playerScoreDisplay = document.getElementById("player-score");
 const computerScoreDisplay = document.getElementById("computer-score");
 const bestScoreDisplay = document.getElementById("best-score");
+const leftPlayerLabel = document.getElementById("left-player-label");
+const rightPlayerLabel = document.getElementById("right-player-label");
 const message = document.getElementById("game-message");
 const messageTitle = document.getElementById("message-title");
 const messageHint = document.getElementById("message-hint");
@@ -11,6 +13,9 @@ const pauseButton = document.getElementById("pause-button");
 const restartButton = document.getElementById("restart-button");
 const soundButton = document.getElementById("sound-button");
 const difficultySelect = document.getElementById("difficulty");
+const difficultyControl = document.getElementById("difficulty-control");
+const modeSelect = document.getElementById("mode");
+const helpText = document.getElementById("help-text");
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
@@ -27,7 +32,7 @@ const DIFFICULTIES = {
 };
 
 const player = { x: PADDLE_MARGIN, y: (HEIGHT - PADDLE_HEIGHT) / 2 };
-const computer = {
+const opponent = {
   x: WIDTH - PADDLE_MARGIN - PADDLE_WIDTH,
   y: (HEIGHT - PADDLE_HEIGHT) / 2
 };
@@ -35,14 +40,17 @@ const ball = { x: WIDTH / 2, y: HEIGHT / 2, vx: 0, vy: 0, trail: [] };
 const particles = [];
 
 let playerScore = 0;
-let computerScore = 0;
+let opponentScore = 0;
 let bestScore = loadBestScore();
-let upPressed = false;
-let downPressed = false;
+const keys = { w: false, s: false, up: false, down: false };
 let lastTime = 0;
 let gameState = "ready";
 let soundEnabled = false;
 let audioContext = null;
+
+function isTwoPlayer() {
+  return modeSelect.value === "two-player";
+}
 
 function loadBestScore() {
   try {
@@ -83,7 +91,23 @@ function syncControls() {
 
 function updateScore() {
   playerScoreDisplay.textContent = playerScore;
-  computerScoreDisplay.textContent = computerScore;
+  computerScoreDisplay.textContent = opponentScore;
+}
+
+function updateModeUI() {
+  const twoPlayer = isTwoPlayer();
+  difficultyControl.hidden = twoPlayer;
+  leftPlayerLabel.textContent = twoPlayer ? "Player 1" : "You";
+  rightPlayerLabel.textContent = twoPlayer ? "Player 2" : "Computer";
+  helpText.innerHTML = twoPlayer
+    ? 'Player 1: <kbd>W</kbd>/<kbd>S</kbd> · Player 2: <kbd>↑</kbd>/<kbd>↓</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart'
+    : 'Move with your mouse or <kbd>W</kbd>/<kbd>S</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart';
+  canvas.setAttribute("aria-label", twoPlayer
+    ? "Two-player Pong. Player one uses W and S. Player two uses the up and down arrow keys."
+    : "Pong against the computer. Move your paddle with the mouse or W and S.");
+  setMessage("Ready?", twoPlayer
+    ? `Two players · First to ${WIN_SCORE} wins · Press Start or Space`
+    : `First to ${WIN_SCORE} wins · Press Start or Space`);
 }
 
 function launchBall(direction) {
@@ -118,35 +142,39 @@ function pauseGame() {
 
 function resetGame() {
   playerScore = 0;
-  computerScore = 0;
+  opponentScore = 0;
   player.y = (HEIGHT - PADDLE_HEIGHT) / 2;
-  computer.y = (HEIGHT - PADDLE_HEIGHT) / 2;
+  opponent.y = (HEIGHT - PADDLE_HEIGHT) / 2;
   particles.length = 0;
   updateScore();
   launchBall(1);
   gameState = "ready";
-  setMessage("Ready?", `First to ${WIN_SCORE} wins · Press Start or Space`);
+  setMessage("Ready?", isTwoPlayer()
+    ? `Two players · First to ${WIN_SCORE} wins · Press Start or Space`
+    : `First to ${WIN_SCORE} wins · Press Start or Space`);
   syncControls();
 }
 
 function handlePoint(scoredByPlayer) {
   if (scoredByPlayer) playerScore++;
-  else computerScore++;
+  else opponentScore++;
   updateScore();
   playTone(scoredByPlayer ? 660 : 220, 0.12);
   burst(ball.x, ball.y, scoredByPlayer ? "#57e3c2" : "#ff7188", 20);
 
-  if (playerScore > bestScore) {
+  if (!isTwoPlayer() && playerScore > bestScore) {
     bestScore = playerScore;
     bestScoreDisplay.textContent = bestScore;
     saveBestScore();
   }
 
-  if (playerScore >= WIN_SCORE || computerScore >= WIN_SCORE) {
+  if (playerScore >= WIN_SCORE || opponentScore >= WIN_SCORE) {
     gameState = "over";
-    const won = playerScore >= WIN_SCORE;
-    setMessage(won ? "You win!" : "Computer wins", "Press R or Restart to play again");
-    playTone(won ? 880 : 150, 0.35);
+    const winner = playerScore >= WIN_SCORE
+      ? (isTwoPlayer() ? "Player 1 wins!" : "You win!")
+      : (isTwoPlayer() ? "Player 2 wins!" : "Computer wins!");
+    setMessage(winner, "Press R or Restart to play again");
+    playTone(playerScore >= WIN_SCORE ? 880 : 150, 0.35);
     syncControls();
     return;
   }
@@ -160,52 +188,66 @@ function handlePointer(event) {
   clampPaddle(player);
 }
 
-canvas.addEventListener("pointermove", handlePointer);
+canvas.addEventListener("pointermove", (event) => {
+  if (!isTwoPlayer()) handlePointer(event);
+});
 canvas.addEventListener("pointerdown", (event) => {
   canvas.focus({ preventScroll: true });
-  handlePointer(event);
+  if (!isTwoPlayer()) handlePointer(event);
 });
 
 canvas.addEventListener("keydown", (event) => {
-  if (event.key === "ArrowUp" || event.key === "ArrowDown" || event.code === "Space") {
+  if (["ArrowUp", "ArrowDown", "Space"].includes(event.code) ||
+      event.key === "ArrowUp" || event.key === "ArrowDown") {
     event.preventDefault();
   }
 });
 
 document.addEventListener("keydown", (event) => {
+  const key = event.key.toLowerCase();
   if (event.key === "ArrowUp" || event.key === "ArrowDown") {
     event.preventDefault();
-    if (event.key === "ArrowUp") upPressed = true;
-    if (event.key === "ArrowDown") downPressed = true;
+    if (event.key === "ArrowUp") keys.up = true;
+    if (event.key === "ArrowDown") keys.down = true;
     return;
   }
+  if (key === "w") keys.w = true;
+  if (key === "s") keys.s = true;
   if (event.code === "Space" && !event.repeat) {
     event.preventDefault();
     if (gameState === "playing" || gameState === "paused") pauseGame();
     else beginGame();
   }
-  if (event.key.toLowerCase() === "r" && !event.repeat) resetGame();
+  if (key === "r" && !event.repeat) resetGame();
 });
 
 document.addEventListener("keyup", (event) => {
-  if (event.key === "ArrowUp") upPressed = false;
-  if (event.key === "ArrowDown") downPressed = false;
+  const key = event.key.toLowerCase();
+  if (event.key === "ArrowUp") keys.up = false;
+  if (event.key === "ArrowDown") keys.down = false;
+  if (key === "w") keys.w = false;
+  if (key === "s") keys.s = false;
 });
 
-// Release held keys when focus leaves the window, but don't pause just because
-// the user clicks a browser control or another app briefly.
-window.addEventListener("blur", () => {
-  upPressed = false;
-  downPressed = false;
-});
+function clearKeys() {
+  keys.w = false;
+  keys.s = false;
+  keys.up = false;
+  keys.down = false;
+}
 
-// Pause only when the page is actually hidden (for example, another tab is opened).
+window.addEventListener("blur", clearKeys);
 document.addEventListener("visibilitychange", () => {
+  clearKeys();
   if (document.hidden && gameState === "playing") pauseGame();
-  // Avoid a large elapsed-time delta when returning to the tab.
   lastTime = 0;
 });
 
+modeSelect.addEventListener("change", () => {
+  clearKeys();
+  resetGame();
+  updateModeUI();
+});
 startButton.addEventListener("click", beginGame);
 pauseButton.addEventListener("click", pauseGame);
 restartButton.addEventListener("click", resetGame);
@@ -233,7 +275,7 @@ function playTone(frequency, duration) {
     oscillator.start();
     oscillator.stop(audioContext.currentTime + duration);
   } catch {
-    // Audio is an optional enhancement and may be unavailable in some browsers.
+    // Audio is optional and may be unavailable in some browsers.
   }
 }
 
@@ -276,16 +318,25 @@ function update(delta) {
     return;
   }
 
-  if (upPressed) player.y -= PLAYER_SPEED * dt;
-  if (downPressed) player.y += PLAYER_SPEED * dt;
+  if (keys.w) player.y -= PLAYER_SPEED * dt;
+  if (keys.s) player.y += PLAYER_SPEED * dt;
+  if (!isTwoPlayer()) {
+    if (keys.up) player.y -= PLAYER_SPEED * dt;
+    if (keys.down) player.y += PLAYER_SPEED * dt;
+  }
   clampPaddle(player);
 
-  const difficulty = DIFFICULTIES[difficultySelect.value] || DIFFICULTIES.normal;
-  const aim = ball.y - PADDLE_HEIGHT / 2;
-  const target = computer.y + (aim - computer.y) * difficulty.reaction;
-  const difference = target - computer.y;
-  computer.y += Math.sign(difference) * Math.min(Math.abs(difference), difficulty.speed * dt);
-  clampPaddle(computer);
+  if (isTwoPlayer()) {
+    if (keys.up) opponent.y -= PLAYER_SPEED * dt;
+    if (keys.down) opponent.y += PLAYER_SPEED * dt;
+  } else {
+    const difficulty = DIFFICULTIES[difficultySelect.value] || DIFFICULTIES.normal;
+    const aim = ball.y - PADDLE_HEIGHT / 2;
+    const target = opponent.y + (aim - opponent.y) * difficulty.reaction;
+    const difference = target - opponent.y;
+    opponent.y += Math.sign(difference) * Math.min(Math.abs(difference), difficulty.speed * dt);
+  }
+  clampPaddle(opponent);
 
   ball.trail.unshift({ x: ball.x, y: ball.y });
   if (ball.trail.length > 8) ball.trail.pop();
@@ -303,7 +354,7 @@ function update(delta) {
   }
 
   hitPaddle(player, true);
-  hitPaddle(computer, false);
+  hitPaddle(opponent, false);
   updateParticles(dt);
 
   if (ball.x + BALL_RADIUS < 0) handlePoint(false);
@@ -361,7 +412,7 @@ function draw() {
   ctx.fillRect(player.x, player.y, PADDLE_WIDTH, PADDLE_HEIGHT);
   ctx.shadowColor = "#f4f7fb";
   ctx.fillStyle = "#f4f7fb";
-  ctx.fillRect(computer.x, computer.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+  ctx.fillRect(opponent.x, opponent.y, PADDLE_WIDTH, PADDLE_HEIGHT);
   ctx.shadowBlur = 0;
 
   ctx.fillStyle = "#ffffff";
@@ -383,6 +434,6 @@ function frame(time) {
 
 bestScoreDisplay.textContent = bestScore;
 updateScore();
-setMessage("Ready?", `First to ${WIN_SCORE} wins · Press Start or Space`);
+updateModeUI();
 syncControls();
 requestAnimationFrame(frame);
