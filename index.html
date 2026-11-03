@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pong</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="game">
+    <h1>Pong</h1>
+    <div class="scoreboard" aria-label="Score">
+      <span>You</span>
+      <strong id="score">0&nbsp;–&nbsp;0</strong>
+      <span>Computer</span>
+    </div>
+
+    <canvas id="game" width="900" height="520" tabindex="0"
+      aria-label="Pong game. Move your mouse over the game or use the up and down arrow keys.">
+    </canvas>
+
+    <p>Move your mouse over the game or use ↑ and ↓ to control your paddle.</p>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
