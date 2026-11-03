@@ -192,14 +192,18 @@ document.addEventListener("keyup", (event) => {
   if (event.key === "ArrowDown") downPressed = false;
 });
 
+// Release held keys when focus leaves the window, but don't pause just because
+// the user clicks a browser control or another app briefly.
 window.addEventListener("blur", () => {
   upPressed = false;
   downPressed = false;
-  if (gameState === "playing") pauseGame();
 });
 
+// Pause only when the page is actually hidden (for example, another tab is opened).
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && gameState === "playing") pauseGame();
+  // Avoid a large elapsed-time delta when returning to the tab.
+  lastTime = 0;
 });
 
 startButton.addEventListener("click", beginGame);
