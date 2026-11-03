@@ -3,23 +3,51 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pong</title>
+  <meta name="theme-color" content="#101522">
+  <title>Pong — Arcade</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="game">
-    <h1>Pong</h1>
-    <div class="scoreboard" aria-label="Score">
-      <span>You</span>
-      <strong id="score">0&nbsp;–&nbsp;0</strong>
-      <span>Computer</span>
+    <header class="game-header">
+      <div>
+        <p class="eyebrow">ARCADE CLASSIC</p>
+        <h1>Pong</h1>
+      </div>
+      <label class="difficulty-control" for="difficulty">
+        <span>Difficulty</span>
+        <select id="difficulty" aria-label="Computer difficulty">
+          <option value="easy">Easy</option>
+          <option value="normal" selected>Normal</option>
+          <option value="hard">Hard</option>
+        </select>
+      </label>
+    </header>
+
+    <section class="scoreboard" aria-label="Scoreboard">
+      <div class="score-card"><span>You</span><strong id="player-score">0</strong></div>
+      <span class="score-divider">:</span>
+      <div class="score-card"><span>Computer</span><strong id="computer-score">0</strong></div>
+      <div class="best-score">BEST <strong id="best-score">0</strong></div>
+    </section>
+
+    <div class="court-wrap">
+      <canvas id="game" width="900" height="520" tabindex="0"
+        aria-label="Pong game. Move your mouse or use the up and down arrow keys to control your paddle."></canvas>
+      <div id="game-message" class="game-message" role="status" aria-live="polite">
+        <span class="message-kicker">FIRST TO 5 WINS</span>
+        <strong id="message-title">Ready?</strong>
+        <span id="message-hint">Press Start or Space to play</span>
+      </div>
     </div>
 
-    <canvas id="game" width="900" height="520" tabindex="0"
-      aria-label="Pong game. Move your mouse over the game or use the up and down arrow keys.">
-    </canvas>
-
-    <p>Move your mouse over the game or use ↑ and ↓ to control your paddle.</p>
+    <div class="controls">
+      <button id="start-button" class="button button-primary" type="button">Start game</button>
+      <button id="pause-button" class="button" type="button" disabled>Pause</button>
+      <button id="restart-button" class="button" type="button">Restart</button>
+      <button id="sound-button" class="button sound-button" type="button" aria-pressed="false">Sound: Off</button>
+    </div>
+    <p class="help">Move your mouse over the court or use <kbd>↑</kbd> <kbd>↓</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart</p>
   </main>
   <script src="game.js"></script>
 </body>
