@@ -19,6 +19,10 @@ const helpText = document.getElementById("help-text");
 const playerNamesSection = document.getElementById("player-names");
 const playerOneNameInput = document.getElementById("player-one-name");
 const playerTwoNameInput = document.getElementById("player-two-name");
+const matchTitleInput = document.getElementById("match-title");
+const matchFormatSelect = document.getElementById("match-format");
+const saveSettingsButton = document.getElementById("save-settings-button");
+const resetScoreButton = document.getElementById("reset-score-button");
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
@@ -35,16 +39,14 @@ const DIFFICULTIES = {
 };
 
 const player = { x: PADDLE_MARGIN, y: (HEIGHT - PADDLE_HEIGHT) / 2 };
-const opponent = {
-  x: WIDTH - PADDLE_MARGIN - PADDLE_WIDTH,
-  y: (HEIGHT - PADDLE_HEIGHT) / 2
-};
+const opponent = { x: WIDTH - PADDLE_MARGIN - PADDLE_WIDTH, y: (HEIGHT - PADDLE_HEIGHT) / 2 };
 const ball = { x: WIDTH / 2, y: HEIGHT / 2, vx: 0, vy: 0, trail: [] };
 const particles = [];
 
 let playerScore = 0;
 let opponentScore = 0;
 let bestScore = loadBestScore();
+let roundWins = { left: 0, right: 0 };
 const keys = { w: false, s: false, up: false, down: false };
 let lastTime = 0;
 let gameState = "ready";
@@ -55,36 +57,53 @@ function isTwoPlayer() {
   return modeSelect.value === "two-player";
 }
 
+function isTeamsMode() {
+  return modeSelect.value === "teams";
+}
+
+function getMatchTitle() {
+  return (matchTitleInput.value || "").trim().slice(0, 28) || "Pong Cup";
+}
+
+function setDocumentTitle() {
+  document.title = `${getMatchTitle()} | Pong`;
+}
+
 function getPlayerName(input, fallback) {
   const name = input.value.trim().slice(0, 16);
   return name || fallback;
 }
 
 function getLeftName() {
-  return getPlayerName(playerOneNameInput, "Player 1");
+  return getPlayerName(playerOneNameInput, isTeamsMode() ? "Team Red" : "Player 1");
 }
 
 function getRightName() {
-  return getPlayerName(playerTwoNameInput, "Player 2");
+  return getPlayerName(playerTwoNameInput, isTeamsMode() ? "Team Blue" : "Player 2");
 }
 
-function loadPlayerNames() {
+function loadSettings() {
   try {
     playerOneNameInput.value = localStorage.getItem("pong-player-one") || "";
     playerTwoNameInput.value = localStorage.getItem("pong-player-two") || "";
+    matchTitleInput.value = localStorage.getItem("pong-match-title") || "";
+    matchFormatSelect.value = localStorage.getItem("pong-match-format") || "single";
   } catch {
-    // Names remain editable for this visit if browser storage is unavailable.
+    // Browser storage can be unavailable; game still works.
   }
 }
 
-function savePlayerName(input, storageKey) {
+function saveSettings() {
   try {
-    const name = input.value.trim().slice(0, 16);
-    if (name) localStorage.setItem(storageKey, name);
-    else localStorage.removeItem(storageKey);
+    localStorage.setItem("pong-player-one", playerOneNameInput.value.trim().slice(0, 16));
+    localStorage.setItem("pong-player-two", playerTwoNameInput.value.trim().slice(0, 16));
+    localStorage.setItem("pong-match-title", matchTitleInput.value.trim().slice(0, 28));
+    localStorage.setItem("pong-match-format", matchFormatSelect.value);
   } catch {
-    // Saving names is optional; the game still works without browser storage.
+    // Save is optional and will not break the game.
   }
+  setDocumentTitle();
+  updateModeUI();
 }
 
 function loadBestScore() {
@@ -99,8 +118,16 @@ function saveBestScore() {
   try {
     localStorage.setItem("pong-best-score", String(bestScore));
   } catch {
-    // The game remains playable when browser storage is unavailable.
+    // Browser storage may be unavailable.
   }
+}
+
+function resetMatchScores() {
+  playerScore = 0;
+  opponentScore = 0;
+  roundWins.left = 0;
+  roundWins.right = 0;
+  updateScore();
 }
 
 function clampPaddle(paddle) {
@@ -129,47 +156,58 @@ function updateScore() {
   computerScoreDisplay.textContent = opponentScore;
 }
 
-function readyHint() {
-  return isTwoPlayer()
-    ? `Two players · First to ${WIN_SCORE} wins · Press Start or Space`
-    : `First to ${WIN_SCORE} wins · Press Start or Space`;
+function updateNamesUI() {
+  leftPlayerLabel.textContent = isTwoPlayer() || isTeamsMode() ? getLeftName() : "You";
+  rightPlayerLabel.textContent = isTwoPlayer() || isTeamsMode() ? getRightName() : "Computer";
 }
 
-function updateNamesUI() {
-  const twoPlayer = isTwoPlayer();
-  leftPlayerLabel.textContent = twoPlayer ? getLeftName() : "You";
-  rightPlayerLabel.textContent = twoPlayer ? getRightName() : "Computer";
+function matchHintText() {
+  if (isTeamsMode()) return `${escapeHTML(getLeftName())} vs ${escapeHTML(getRightName())}`;
+  if (isTwoPlayer()) return `${escapeHTML(getLeftName())} vs ${escapeHTML(getRightName())}`;
+  return "Solo challenge";
 }
 
 function updateModeUI() {
   const twoPlayer = isTwoPlayer();
-  difficultyControl.hidden = twoPlayer;
-  playerNamesSection.hidden = !twoPlayer;
+  const teams = isTeamsMode();
+  difficultyControl.hidden = twoPlayer || teams;
+  playerNamesSection.hidden = !(twoPlayer || teams);
   updateNamesUI();
-  helpText.innerHTML = twoPlayer
+  helpText.innerHTML = teams
     ? `${escapeHTML(getLeftName())}: <kbd>W</kbd>/<kbd>S</kbd> · ${escapeHTML(getRightName())}: <kbd>↑</kbd>/<kbd>↓</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart`
-    : 'Move with your mouse or <kbd>W</kbd>/<kbd>S</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart';
-  canvas.setAttribute("aria-label", twoPlayer
-    ? `Two-player Pong. ${getLeftName()} uses W and S. ${getRightName()} uses the up and down arrow keys.`
-    : "Pong against the computer. Move your paddle with the mouse or W and S.");
-  if (gameState === "ready") setMessage("Ready?", readyHint());
+    : twoPlayer
+      ? `${escapeHTML(getLeftName())}: <kbd>W</kbd>/<kbd>S</kbd> · ${escapeHTML(getRightName())}: <kbd>↑</kbd>/<kbd>↓</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart`
+      : 'Move with your mouse or <kbd>W</kbd>/<kbd>S</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart';
+  canvas.setAttribute("aria-label", teams
+    ? `Team match. ${getLeftName()} uses W and S. ${getRightName()} uses the up and down arrow keys.`
+    : twoPlayer
+      ? `Two-player Pong. ${getLeftName()} uses W and S. ${getRightName()} uses the up and down arrow keys.`
+      : "Pong against the computer. Move your paddle with the mouse or W and S.");
+  if (gameState === "ready") setMessage("Ready?", `${matchHintText()} · ${getMatchTitle()} · Press Start or Space`);
+  setDocumentTitle();
 }
 
 function escapeHTML(value) {
   return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   })[character]);
 }
 
-function updatePlayerNames() {
-  updateNamesUI();
-  if (isTwoPlayer()) {
-    helpText.innerHTML = `${escapeHTML(getLeftName())}: <kbd>W</kbd>/<kbd>S</kbd> · ${escapeHTML(getRightName())}: <kbd>↑</kbd>/<kbd>↓</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart`;
-    canvas.setAttribute("aria-label", `Two-player Pong. ${getLeftName()} uses W and S. ${getRightName()} uses the up and down arrow keys.`);
-    if (gameState === "over") {
-      setMessage(playerScore >= WIN_SCORE ? `${getLeftName()} wins!` : `${getRightName()} wins!`, "Press R or Restart to play again");
-    }
-  }
+function formatMatchTitle() {
+  return getMatchTitle();
+}
+
+function getMatchTarget() {
+  const format = matchFormatSelect.value;
+  if (format === "best3") return 2;
+  if (format === "best5") return 3;
+  return 1;
+}
+
+function readyHint() {
+  const target = getMatchTarget();
+  const formatText = target === 1 ? "Single match" : `Best of ${target * 2 - 1}`;
+  return `${matchHintText()} · ${formatText} · ${getMatchTitle()} · Press Start or Space`;
 }
 
 function launchBall(direction) {
@@ -205,6 +243,8 @@ function pauseGame() {
 function resetGame() {
   playerScore = 0;
   opponentScore = 0;
+  roundWins.left = 0;
+  roundWins.right = 0;
   player.y = (HEIGHT - PADDLE_HEIGHT) / 2;
   opponent.y = (HEIGHT - PADDLE_HEIGHT) / 2;
   particles.length = 0;
@@ -215,6 +255,11 @@ function resetGame() {
   syncControls();
 }
 
+function decideWinnerMessage(winner) {
+  if (!isTwoPlayer() && !isTeamsMode()) return winner === "left" ? "You win!" : "Computer wins!";
+  return winner === "left" ? `${getLeftName()} wins!` : `${getRightName()} wins!`;
+}
+
 function handlePoint(scoredByPlayer) {
   if (scoredByPlayer) playerScore++;
   else opponentScore++;
@@ -222,24 +267,54 @@ function handlePoint(scoredByPlayer) {
   playTone(scoredByPlayer ? 660 : 220, 0.12);
   burst(ball.x, ball.y, scoredByPlayer ? "#57e3c2" : "#ff7188", 20);
 
-  if (!isTwoPlayer() && playerScore > bestScore) {
+  if (!isTwoPlayer() && !isTeamsMode() && playerScore > bestScore) {
     bestScore = playerScore;
     bestScoreDisplay.textContent = bestScore;
     saveBestScore();
   }
 
-  if (playerScore >= WIN_SCORE || opponentScore >= WIN_SCORE) {
+  const format = matchFormatSelect.value;
+  const pointWin = playerScore >= WIN_SCORE || opponentScore >= WIN_SCORE;
+
+  if (!pointWin) {
+    if (format !== "single") {
+      const targetSets = getMatchTarget();
+      if (roundWins.left >= targetSets || roundWins.right >= targetSets) {
+        gameState = "over";
+        const winner = roundWins.left >= targetSets ? "left" : "right";
+        setMessage(decideWinnerMessage(winner), `${getMatchTitle()} complete · Press R or Restart`);
+        playTone(winner === "left" ? 880 : 150, 0.35);
+        syncControls();
+        return;
+      }
+    }
+    return;
+  }
+
+  const winner = playerScore >= WIN_SCORE ? "left" : "right";
+  if (format === "single") {
     gameState = "over";
-    const winner = playerScore >= WIN_SCORE
-      ? (isTwoPlayer() ? `${getLeftName()} wins!` : "You win!")
-      : (isTwoPlayer() ? `${getRightName()} wins!` : "Computer wins!");
-    setMessage(winner, "Press R or Restart to play again");
-    playTone(playerScore >= WIN_SCORE ? 880 : 150, 0.35);
+    setMessage(decideWinnerMessage(winner), "Press R or Restart to play again");
+    playTone(winner === "left" ? 880 : 150, 0.35);
     syncControls();
     return;
   }
 
-  launchBall(scoredByPlayer ? 1 : -1);
+  roundWins[winner] += 1;
+  const targetSets = getMatchTarget();
+  if (roundWins.left >= targetSets || roundWins.right >= targetSets) {
+    gameState = "over";
+    setMessage(decideWinnerMessage(winner), `${getMatchTitle()} complete · Press R or Restart`);
+    playTone(winner === "left" ? 880 : 150, 0.35);
+    syncControls();
+    return;
+  }
+
+  playerScore = 0;
+  opponentScore = 0;
+  updateScore();
+  setMessage(`Set ${roundWins.left + roundWins.right + 1}`, `Next round: ${getMatchTitle()}`);
+  launchBall(Math.random() < 0.5 ? -1 : 1);
 }
 
 function handlePointer(event) {
@@ -249,16 +324,15 @@ function handlePointer(event) {
 }
 
 canvas.addEventListener("pointermove", (event) => {
-  if (!isTwoPlayer()) handlePointer(event);
+  if (!(isTwoPlayer() || isTeamsMode())) handlePointer(event);
 });
 canvas.addEventListener("pointerdown", (event) => {
   canvas.focus({ preventScroll: true });
-  if (!isTwoPlayer()) handlePointer(event);
+  if (!(isTwoPlayer() || isTeamsMode())) handlePointer(event);
 });
 
 canvas.addEventListener("keydown", (event) => {
-  if (["ArrowUp", "ArrowDown", "Space"].includes(event.code) ||
-      event.key === "ArrowUp" || event.key === "ArrowDown") event.preventDefault();
+  if (["ArrowUp", "ArrowDown", "Space"].includes(event.code) || event.key === "ArrowUp" || event.key === "ArrowDown") event.preventDefault();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -307,13 +381,32 @@ modeSelect.addEventListener("change", () => {
   updateModeUI();
 });
 
+matchFormatSelect.addEventListener("change", () => {
+  saveSettings();
+  resetGame();
+  updateModeUI();
+});
+
 playerOneNameInput.addEventListener("input", () => {
-  savePlayerName(playerOneNameInput, "pong-player-one");
-  updatePlayerNames();
+  saveSettings();
+  updateModeUI();
 });
 playerTwoNameInput.addEventListener("input", () => {
-  savePlayerName(playerTwoNameInput, "pong-player-two");
-  updatePlayerNames();
+  saveSettings();
+  updateModeUI();
+});
+matchTitleInput.addEventListener("input", () => {
+  setDocumentTitle();
+  if (gameState === "ready") setMessage("Ready?", readyHint());
+});
+
+saveSettingsButton.addEventListener("click", saveSettings);
+resetScoreButton.addEventListener("click", () => {
+  bestScore = 0;
+  saveBestScore();
+  bestScoreDisplay.textContent = bestScore;
+  resetMatchScores();
+  setMessage("Cleared", "Scores reset for a fresh match");
 });
 
 startButton.addEventListener("click", beginGame);
@@ -351,14 +444,7 @@ function burst(x, y, color, count) {
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 45 + Math.random() * 180;
-    particles.push({
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: 0.35 + Math.random() * 0.45,
-      maxLife: 0.8,
-      color
-    });
+    particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.45, maxLife: 0.8, color });
   }
 }
 
@@ -388,13 +474,13 @@ function update(delta) {
 
   if (keys.w) player.y -= PLAYER_SPEED * dt;
   if (keys.s) player.y += PLAYER_SPEED * dt;
-  if (!isTwoPlayer()) {
+  if (!(isTwoPlayer() || isTeamsMode())) {
     if (keys.up) player.y -= PLAYER_SPEED * dt;
     if (keys.down) player.y += PLAYER_SPEED * dt;
   }
   clampPaddle(player);
 
-  if (isTwoPlayer()) {
+  if (isTwoPlayer() || isTeamsMode()) {
     if (keys.up) opponent.y -= PLAYER_SPEED * dt;
     if (keys.down) opponent.y += PLAYER_SPEED * dt;
   } else {
@@ -443,7 +529,11 @@ function updateParticles(dt) {
 
 function draw() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  ctx.fillStyle = "#141d2c";
+
+  const background = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+  background.addColorStop(0, "#0b1424");
+  background.addColorStop(1, "#141d2c");
+  ctx.fillStyle = background;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
   ctx.strokeStyle = "#344258";
@@ -500,9 +590,10 @@ function frame(time) {
   requestAnimationFrame(frame);
 }
 
-loadPlayerNames();
+loadSettings();
 bestScoreDisplay.textContent = bestScore;
 updateScore();
+setDocumentTitle();
 updateModeUI();
 syncControls();
 requestAnimationFrame(frame);

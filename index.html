@@ -20,6 +20,7 @@
           <select id="mode" aria-label="Game mode">
             <option value="computer" selected>Vs Computer</option>
             <option value="two-player">2 Players</option>
+            <option value="teams">Teams</option>
           </select>
         </label>
         <label id="difficulty-control" class="difficulty-control" for="difficulty">
@@ -32,6 +33,23 @@
         </label>
       </div>
     </header>
+
+    <section class="settings-row">
+      <label class="match-title-control" for="match-title">
+        <span>Match title</span>
+        <input id="match-title" type="text" maxlength="28" placeholder="Salman Cup" autocomplete="off">
+      </label>
+      <label class="match-title-control" for="match-format">
+        <span>Match format</span>
+        <select id="match-format" aria-label="Match format">
+          <option value="single" selected>Single match</option>
+          <option value="best3">Best of 3</option>
+          <option value="best5">Best of 5</option>
+        </select>
+      </label>
+      <button id="save-settings-button" class="button" type="button">Save names</button>
+      <button id="reset-score-button" class="button" type="button">Reset scores</button>
+    </section>
 
     <section id="player-names" class="player-names" aria-label="Player names" hidden>
       <label for="player-one-name">Player 1 name
