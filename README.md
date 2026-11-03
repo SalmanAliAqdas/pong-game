@@ -1,58 +1,35 @@
-# Pong Game
+# Pong
 
-A simple browser-based Pong game built with HTML, CSS, and JavaScript.
-
-## Overview
-
-This project is a classic two-player Pong game in which players move paddles up and down to hit the ball back and forth. The goal is to score points by getting the ball past the opponent's paddle.
+A browser-based Pong game built with plain HTML, CSS, and JavaScript. Play against the computer, keep the ball in play, and try to outscore it.
 
 ## Features
 
-- Two-player local gameplay
-- Score tracking
-- Ball speed increase as the game progresses
-- Simple and responsive controls
-- Easy to run locally in a browser
+- Play against a computer-controlled paddle
+- Move your paddle with the mouse or the up and down arrow keys
+- Live score display
+- Responsive layout
+- Optional synthesized arcade music, started and stopped with the on-page music control
+- No build tools or external dependencies required
 
-## How to Play
+## Play locally
 
-1. Open the project in your browser.
-2. Player 1 uses `W` and `S` to move upward and downward.
-3. Player 2 uses the up and down arrow keys.
-4. Score a point when the opposing player misses the ball.
-
-## Run the Game
-
-Since this is a lightweight front-end project, you can run it by opening the main HTML file in a browser.
-
-Example:
-
-```bash
-open index.html
-```
-
-If you are using a local development server, you can also run a simple static server in the project folder:
+Clone or download the repository, then open `index.html` in a modern browser. You can also serve the files locally:
 
 ```bash
 python3 -m http.server
 ```
 
-Then open:
+Then visit <http://localhost:8000>.
 
-```text
-http://localhost:8000
-```
+## Controls
 
-## Project Structure
+- Move the mouse over the game area to position your paddle.
+- Alternatively, use the **↑** and **↓** arrow keys.
+- Use the music button on the page to turn the optional music on or off.
 
-```text
-.
-├── index.html
-├── style.css
-├── script.js
-└── README.md
-```
+## Project files
 
-## License
-
-This project is open for personal and educational use.
+- `index.html` — game page and canvas
+- `style.css` — layout and styling
+- `game.js` — Pong gameplay and computer opponent
+- `music.js` — optional synthesized music
