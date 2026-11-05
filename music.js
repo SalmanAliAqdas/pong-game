@@ -2,16 +2,15 @@
   const button = document.getElementById("music-button");
   if (!button) return;
 
-  // A small original, synthesized arcade loop. No audio files or external
-  // services are needed, and playback begins only after the user opts in.
+  // An original, upbeat synthesized arcade loop with no external audio files.
   const melody = [
-    72, null, 76, 79, null, 76, 74, null,
-    69, null, 72, 76, null, 72, 71, null,
-    67, null, 72, 76, null, 79, 76, null,
-    71, null, 74, 79, null, 74, 72, null
+    76, null, 79, 83, 79, null, 76, null,
+    74, null, 78, 81, 78, null, 74, null,
+    72, 76, 79, null, 83, null, 79, null,
+    74, null, 78, 81, 86, 81, 78, null
   ];
-  const bass = [48, 45, 41, 43];
-  const stepDuration = 60 / 112 / 2;
+  const bass = [48, 43, 45, 41];
+  const stepDuration = 60 / 128 / 2;
 
   let context;
   let master;
@@ -19,6 +18,7 @@
   let nextNoteTime = 0;
   let step = 0;
   let enabled = false;
+  let noiseBuffer;
 
   function midiToFrequency(note) {
     return 440 * Math.pow(2, (note - 69) / 12);
@@ -43,16 +43,57 @@
     }, { once: true });
   }
 
+  function playKick(startAt) {
+    const oscillator = context.createOscillator();
+    const envelope = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(140, startAt);
+    oscillator.frequency.exponentialRampToValueAtTime(48, startAt + 0.14);
+    envelope.gain.setValueAtTime(0.22, startAt);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.16);
+    oscillator.connect(envelope);
+    envelope.connect(master);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + 0.18);
+    oscillator.addEventListener("ended", () => {
+      oscillator.disconnect();
+      envelope.disconnect();
+    }, { once: true });
+  }
+
+  function playSnare(startAt) {
+    const source = context.createBufferSource();
+    const filter = context.createBiquadFilter();
+    const envelope = context.createGain();
+    source.buffer = noiseBuffer;
+    filter.type = "highpass";
+    filter.frequency.value = 1400;
+    envelope.gain.setValueAtTime(0.12, startAt);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.12);
+    source.connect(filter);
+    filter.connect(envelope);
+    envelope.connect(master);
+    source.start(startAt);
+    source.stop(startAt + 0.13);
+    source.addEventListener("ended", () => {
+      source.disconnect();
+      filter.disconnect();
+      envelope.disconnect();
+    }, { once: true });
+  }
+
   function scheduleNotes() {
     while (nextNoteTime < context.currentTime + 0.4) {
       const note = melody[step % melody.length];
       if (note !== null) {
-        playNote(midiToFrequency(note), nextNoteTime, stepDuration * 0.88, "triangle", 0.12);
+        playNote(midiToFrequency(note), nextNoteTime, stepDuration * 0.78, "square", 0.07);
       }
       if (step % 8 === 0) {
         const bassNote = bass[Math.floor(step / 8) % bass.length];
-        playNote(midiToFrequency(bassNote), nextNoteTime, stepDuration * 3.7, "sine", 0.16);
+        playNote(midiToFrequency(bassNote), nextNoteTime, stepDuration * 3.7, "triangle", 0.16);
       }
+      if (step % 4 === 0) playKick(nextNoteTime);
+      else if (step % 8 === 4) playSnare(nextNoteTime);
       nextNoteTime += stepDuration;
       step++;
     }
@@ -72,6 +113,11 @@
         master = context.createGain();
         master.gain.value = 0;
         master.connect(context.destination);
+        noiseBuffer = context.createBuffer(1, context.sampleRate, context.sampleRate);
+        const noise = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noise.length; i++) {
+          noise[i] = Math.random() * 2 - 1;
+        }
       }
       await context.resume();
       const now = context.currentTime;
