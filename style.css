@@ -121,6 +121,17 @@ select, input { min-height: 38px; padding: 8px 10px; }
 .score-divider { color: #53627a; font-size: 1.5rem; }
 .best-score { position: absolute; right: 0; color: #8594aa; font-size: .7rem; font-weight: 800; letter-spacing: .1em; }
 .best-score strong { margin-left: 5px; color: #f4c96b; }
+.game-duration {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+  margin: -4px 0 12px;
+  color: #8594aa;
+  font-size: .72rem;
+  letter-spacing: .06em;
+}
+.game-duration time { color: #f4f7fb; font-variant-numeric: tabular-nums; font-weight: 700; }
 
 .court-wrap { position: relative; }
 canvas {

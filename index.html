@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101522">
   <title>Pong — Arcade</title>
-  <link rel="stylesheet" href="style.css?v=music-1">
+  <link rel="stylesheet" href="style.css?v=duration-1">
 </head>
 <body>
   <main class="game">
@@ -67,6 +67,10 @@
       <div class="score-card"><span id="right-player-label">Computer</span><strong id="computer-score">0</strong></div>
       <div class="best-score">BEST <strong id="best-score">0</strong></div>
     </section>
+    <div class="game-duration" aria-label="Game duration">
+      <span id="duration-mode">Vs Computer</span>
+      <time id="game-duration">00:00</time>
+    </div>
 
     <div class="court-wrap">
       <canvas id="game" width="900" height="520" tabindex="0"
@@ -87,7 +91,7 @@
     </div>
     <p id="help-text" class="help">Move with your mouse or <kbd>W</kbd>/<kbd>S</kbd> · <kbd>Space</kbd> start/pause · <kbd>R</kbd> restart</p>
   </main>
-  <script src="game.js?v=music-1"></script>
+  <script src="game.js?v=duration-1"></script>
   <script src="music.js?v=music-2"></script>
 </body>
 </html>

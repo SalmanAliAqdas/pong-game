@@ -7,6 +7,7 @@ A browser-based Pong game built with plain HTML, CSS, and JavaScript. Play again
 - Play against a computer-controlled paddle
 - Move your paddle with the mouse or the up and down arrow keys
 - Live score display
+- Live match duration, with paused time excluded and the final duration shown with the match mode
 - Responsive layout
 - Optional synthesized arcade music, started and stopped with the on-page music control
 - No build tools or external dependencies required

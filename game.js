@@ -3,6 +3,8 @@ const ctx = canvas.getContext("2d");
 const playerScoreDisplay = document.getElementById("player-score");
 const computerScoreDisplay = document.getElementById("computer-score");
 const bestScoreDisplay = document.getElementById("best-score");
+const gameDurationDisplay = document.getElementById("game-duration");
+const durationModeDisplay = document.getElementById("duration-mode");
 const leftPlayerLabel = document.getElementById("left-player-label");
 const rightPlayerLabel = document.getElementById("right-player-label");
 const message = document.getElementById("game-message");
@@ -50,12 +52,39 @@ let roundWins = { left: 0, right: 0 };
 let bestScore = loadBestScore();
 let lastTime = 0;
 let gameState = "ready";
+let gameDuration = 0;
+let gameStartedAt = null;
 let soundEnabled = false;
 let audioContext = null;
 
 function isTwoPlayer() { return modeSelect.value === "two-player"; }
 function isTeamsMode() { return modeSelect.value === "teams"; }
 function isLocalMode() { return isTwoPlayer() || isTeamsMode(); }
+
+function modeName() {
+  if (isTeamsMode()) return "Teams";
+  if (isTwoPlayer()) return "2 Players";
+  return "Vs Computer";
+}
+
+function elapsedGameDuration() {
+  return gameDuration + (gameStartedAt === null ? 0 : performance.now() - gameStartedAt);
+}
+
+function updateGameDuration() {
+  const totalSeconds = Math.floor(elapsedGameDuration() / 1000);
+  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
+  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+  gameDurationDisplay.textContent = `${minutes}:${seconds}`;
+}
+
+function stopGameTimer() {
+  if (gameStartedAt !== null) {
+    gameDuration += performance.now() - gameStartedAt;
+    gameStartedAt = null;
+  }
+  updateGameDuration();
+}
 
 function loadBestScore() {
   try { return Number(localStorage.getItem("pong-best-score")) || 0; }
@@ -135,6 +164,7 @@ function escapeHTML(text) {
 
 function updateModeUI() {
   const local = isLocalMode();
+  durationModeDisplay.textContent = modeName();
   difficultyControl.hidden = local;
   playerNamesSection.hidden = !local;
   leftPlayerLabel.textContent = local ? leftName() : "You";
@@ -165,6 +195,8 @@ function launchBall(direction) {
 
 function beginGame() {
   if (gameState === "over") resetGame();
+  if (gameState === "ready") gameStartedAt = performance.now();
+  else if (gameState === "paused") gameStartedAt = performance.now();
   gameState = "playing";
   launchBall(Math.random() < 0.5 ? -1 : 1);
   hideMessage();
@@ -174,9 +206,11 @@ function beginGame() {
 
 function pauseGame() {
   if (gameState === "playing") {
+    stopGameTimer();
     gameState = "paused";
     setMessage("Paused", "Press Space or Resume to continue");
   } else if (gameState === "paused") {
+    gameStartedAt = performance.now();
     gameState = "playing";
     hideMessage();
   }
@@ -184,6 +218,9 @@ function pauseGame() {
 }
 
 function resetGame() {
+  gameDuration = 0;
+  gameStartedAt = null;
+  updateGameDuration();
   playerScore = 0;
   opponentScore = 0;
   roundWins = { left: 0, right: 0 };
@@ -197,10 +234,11 @@ function resetGame() {
 }
 
 function finishMatch(winner) {
+  stopGameTimer();
   gameState = "over";
   const winnerName = isLocalMode() ? (winner === "left" ? leftName() : rightName()) : (winner === "left" ? "You" : "Computer");
   const setSummary = matchTarget() === 1 ? "" : ` · Sets ${roundWins.left}-${roundWins.right}`;
-  setMessage(`${winnerName} wins!`, `${matchTitle()} complete${setSummary} · Press R or Restart`);
+  setMessage(`${winnerName} wins!`, `${modeName()} · ${matchTitle()} complete${setSummary} · Duration ${gameDurationDisplay.textContent} · Press R or Restart`);
   playTone(winner === "left" ? 880 : 150, 0.35);
   syncControls();
 }
@@ -482,6 +520,7 @@ function frame(time) {
   const delta = lastTime ? (time - lastTime) / 1000 : 0;
   lastTime = time;
   update(delta);
+  updateGameDuration();
   draw();
   requestAnimationFrame(frame);
 }
@@ -490,5 +529,6 @@ loadSettings();
 bestScoreDisplay.textContent = bestScore;
 updateScore();
 updateModeUI();
+updateGameDuration();
 syncControls();
 requestAnimationFrame(frame);
